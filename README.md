@@ -50,6 +50,8 @@ Created a completely custom LWC (`referralForm`) with:
 - Processes referral information (creates/updates Lead or Contact)
 - Runs in `without sharing` mode for guest user access
 - Uses the Executive Education Record Type
+- Assigns all new Leads to System Admin user (`sysadmin@darden.virginia.edu.salesforce`)
+- Captures and stores the referring page URL in `Page_URL__c` for lead source tracking
 
 ### Logic Flow
 
@@ -78,6 +80,8 @@ Created a completely custom LWC (`referralForm`) with:
 | Your Email | Email | - |
 | Referral Name | FirstName, LastName | - |
 | Referral Company | Company | - |
+| Referral Email | Email | - |
+| (Auto) Page URL | Page_URL__c | Page_URL__c |
 | Referral Email | Email | - |
 | (Auto) | Description, LeadSource="Referral" | Description, Referred__c |
 | (Auto) | RecordTypeId (Exec Ed) | - |
@@ -177,7 +181,11 @@ sf apex run test -n ReferralFormControllerTest --target-org darden-prod --result
 
 3. **Custom Fields**: Requires these custom fields to exist:
    - `Contact.Referred__c` (Text)
+   - `Contact.Page_URL__c` (URL or Text)
    - `Lead.Alternate_Email__c` (Email)
+   - `Lead.Page_URL__c` (URL or Text)
+
+4. **System Admin User**: Requires an active user with username `sysadmin@darden.virginia.edu.salesforce` for Lead ownership assignment. If not found, Leads will be created with default owner.
 
 ## Related JIRA Ticket
 
