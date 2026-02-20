@@ -2,6 +2,9 @@
     display: block;
     width: 100%;
     background: white;
+    --lwc-fontFamily: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    --sds-c-input-text-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    --slds-c-input-text-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .referral-form-container {
@@ -9,6 +12,7 @@
     margin: 0 auto;
     padding: 20px;
     background: white;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .form-content {
@@ -19,6 +23,19 @@
 
 .form-field {
     width: 100%;
+    --sds-c-input-text-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    --slds-c-input-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+}
+
+lightning-input {
+    --sds-c-input-text-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    --slds-c-input-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+}
+
+lightning-button {
+    --sds-c-button-text-font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .button-container {
@@ -46,11 +63,13 @@
     padding: 12px;
     margin-top: 16px;
     text-align: center;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .thank-you-message {
     text-align: center;
     padding: 40px 20px;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .thank-you-message h2 {
@@ -58,12 +77,14 @@
     font-weight: 700;
     color: #2e844a;
     margin: 16px 0 8px 0;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .thank-you-message p {
     font-size: 16px;
     color: #444;
     margin: 0;
+    font-family: "Franklin Gothic", "Franklin Gothic Medium", "ITC Franklin Gothic", "Helvetica Neue", Arial, sans-serif;
 }
 
 .thank-you-message lightning-icon {
