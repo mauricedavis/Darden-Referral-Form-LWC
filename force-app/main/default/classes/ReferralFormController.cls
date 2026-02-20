@@ -1,6 +1,7 @@
 public without sharing class ReferralFormController {
     
     private static final String EXEC_ED_RECORD_TYPE_ID = '012d0000000XRiCAAW';
+    private static final String SYSTEM_ADMIN_USERNAME = 'sysadmin@darden.virginia.edu.salesforce';
     
     @AuraEnabled
     public static String submitReferral(String referrerName, String referrerEmail, 
@@ -52,6 +53,13 @@ public without sharing class ReferralFormController {
             Status = 'Open - Not Contacted',
             RecordTypeId = EXEC_ED_RECORD_TYPE_ID
         );
+        
+        // Set owner to System Admin
+        Id sysAdminId = getSystemAdminUserId();
+        if (sysAdminId != null) {
+            newLead.OwnerId = sysAdminId;
+        }
+        
         insert newLead;
     }
     
@@ -104,6 +112,13 @@ public without sharing class ReferralFormController {
         if (String.isNotBlank(email)) {
             newLead.Email = email;
         }
+        
+        // Set owner to System Admin
+        Id sysAdminId = getSystemAdminUserId();
+        if (sysAdminId != null) {
+            newLead.OwnerId = sysAdminId;
+        }
+        
         insert newLead;
     }
     
@@ -117,5 +132,13 @@ public without sharing class ReferralFormController {
         if (String.isBlank(fullName)) return 'NotProvided';
         if (!fullName.contains(' ')) return 'NotProvided';
         return fullName.substringAfter(' ');
+    }
+    
+    private static Id getSystemAdminUserId() {
+        List<User> users = [SELECT Id FROM User WHERE Username = :SYSTEM_ADMIN_USERNAME AND IsActive = true LIMIT 1];
+        if (!users.isEmpty()) {
+            return users[0].Id;
+        }
+        return null;
     }
 }
