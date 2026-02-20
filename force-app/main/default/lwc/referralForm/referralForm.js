@@ -19,13 +19,23 @@ export default class ReferralForm extends LightningElement {
     
     capturePageUrl() {
         try {
-            // Try to get the parent page URL (for iframe embeds)
+            // Priority 1: Check for pageUrl query parameter (most reliable for iframe embeds)
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramUrl = urlParams.get('pageUrl') || urlParams.get('ref') || urlParams.get('source');
+            
+            if (paramUrl) {
+                this.pageUrl = decodeURIComponent(paramUrl);
+                return;
+            }
+            
+            // Priority 2: Try document.referrer (may be truncated by browser policies)
             if (document.referrer) {
                 this.pageUrl = document.referrer;
-            } else {
-                // Fallback to current page URL
-                this.pageUrl = window.location.href;
+                return;
             }
+            
+            // Priority 3: Fallback to current page URL
+            this.pageUrl = window.location.href;
         } catch (e) {
             // If access is blocked due to cross-origin, use current URL
             this.pageUrl = window.location.href;
