@@ -1,6 +1,8 @@
 @isTest
 private class ReferralFormControllerTest {
     
+    private static final String TEST_PAGE_URL = 'https://cloud.learn.darden.virginia.edu/ee-darden-alum-tep-referral';
+    
     @isTest
     static void testSubmitReferralNewLeads() {
         // Test creating new leads when no existing contacts/leads
@@ -10,25 +12,28 @@ private class ReferralFormControllerTest {
             'john.referrer@test.com',
             'Jane Referral',
             'Test Company',
-            'jane.referral@test.com'
+            'jane.referral@test.com',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify referrer lead was created
-        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email FROM Lead WHERE Email = 'john.referrer@test.com'];
+        // Verify referrer lead was created with Page URL
+        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email, Page_URL__c FROM Lead WHERE Email = 'john.referrer@test.com'];
         System.assertEquals(1, referrerLeads.size(), 'Referrer lead should be created');
         System.assertEquals('John', referrerLeads[0].FirstName);
         System.assertEquals('Referrer', referrerLeads[0].LastName);
+        System.assertEquals(TEST_PAGE_URL, referrerLeads[0].Page_URL__c, 'Page URL should be set');
         
-        // Verify referral lead was created
-        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description FROM Lead WHERE Email = 'jane.referral@test.com'];
+        // Verify referral lead was created with Page URL
+        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description, Page_URL__c FROM Lead WHERE Email = 'jane.referral@test.com'];
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created');
         System.assertEquals('Jane', referralLeads[0].FirstName);
         System.assertEquals('Referral', referralLeads[0].LastName);
         System.assertEquals('Test Company', referralLeads[0].Company);
         System.assert(referralLeads[0].Description.contains('Referred by'), 'Description should contain referral note');
+        System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
     }
     
     @isTest
@@ -40,16 +45,18 @@ private class ReferralFormControllerTest {
             'john2.referrer@test.com',
             'Jane NoEmail',
             '',
-            ''
+            '',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify referral lead was created without email
-        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Company FROM Lead WHERE FirstName = 'Jane' AND LastName = 'NoEmail'];
+        // Verify referral lead was created without email but with Page URL
+        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Company, Page_URL__c FROM Lead WHERE FirstName = 'Jane' AND LastName = 'NoEmail'];
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created without email');
         System.assertEquals('Not Provided', referralLeads[0].Company);
+        System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
     }
     
     @isTest
@@ -68,7 +75,8 @@ private class ReferralFormControllerTest {
             'existing.contact@test.com',
             'New Referral',
             'Company',
-            'new.referral@test.com'
+            'new.referral@test.com',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
@@ -95,16 +103,18 @@ private class ReferralFormControllerTest {
             'john.doe@test.com',
             'Referral Person Full Name',
             'Company',
-            'referral.person@test.com'
+            'referral.person@test.com',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify existing contact was updated with Referred__c field
-        Contact updatedContact = [SELECT Id, Description, Referred__c FROM Contact WHERE Id = :existingContact.Id];
+        // Verify existing contact was updated with Referred__c and Page_URL__c fields
+        Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c FROM Contact WHERE Id = :existingContact.Id];
         System.assert(updatedContact.Description.contains('Referred by'), 'Description should contain referral note');
         System.assertEquals('Referral Person Full Name', updatedContact.Referred__c, 'Referred__c should be set to referral name');
+        System.assertEquals(TEST_PAGE_URL, updatedContact.Page_URL__c, 'Page URL should be set on Contact');
     }
     
     @isTest
@@ -125,17 +135,19 @@ private class ReferralFormControllerTest {
             'new.referrer@test.com',
             'Existing Lead',
             'New Company',
-            'existing.lead@test.com'
+            'existing.lead@test.com',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify existing lead was updated with all fields including Alternate_Email__c
-        Lead updatedLead = [SELECT Id, Description, LeadSource, Alternate_Email__c FROM Lead WHERE Id = :existingLead.Id];
+        // Verify existing lead was updated with all fields including Alternate_Email__c and Page_URL__c
+        Lead updatedLead = [SELECT Id, Description, LeadSource, Alternate_Email__c, Page_URL__c FROM Lead WHERE Id = :existingLead.Id];
         System.assertEquals('Referral', updatedLead.LeadSource);
         System.assert(updatedLead.Description.contains('Referred by'), 'Description should be updated');
         System.assertEquals('existing.lead@test.com', updatedLead.Alternate_Email__c, 'Alternate_Email__c should be set');
+        System.assertEquals(TEST_PAGE_URL, updatedLead.Page_URL__c, 'Page URL should be set on existing Lead');
     }
     
     @isTest
@@ -147,7 +159,8 @@ private class ReferralFormControllerTest {
             'single@test.com',
             'AnotherSingle',
             'Company',
-            'another@test.com'
+            'another@test.com',
+            TEST_PAGE_URL
         );
         Test.stopTest();
         
@@ -158,5 +171,27 @@ private class ReferralFormControllerTest {
         System.assertEquals(1, leads.size());
         System.assertEquals('SingleName', leads[0].FirstName);
         System.assertEquals('NotProvided', leads[0].LastName);
+    }
+    
+    @isTest
+    static void testSubmitReferralNoPageUrl() {
+        // Test with null page URL (should still work)
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'Test User',
+            'testuser@test.com',
+            'Test Referral',
+            'Test Co',
+            'testreferral@test.com',
+            null
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success even without page URL');
+        
+        // Verify lead was created without Page URL
+        List<Lead> leads = [SELECT Id, Page_URL__c FROM Lead WHERE Email = 'testreferral@test.com'];
+        System.assertEquals(1, leads.size(), 'Lead should be created');
+        System.assertEquals(null, leads[0].Page_URL__c, 'Page URL should be null');
     }
 }

@@ -6,7 +6,7 @@ public without sharing class ReferralFormController {
     @AuraEnabled
     public static String submitReferral(String referrerName, String referrerEmail, 
                                         String referralName, String referralCompany, 
-                                        String referralEmail) {
+                                        String referralEmail, String pageUrl) {
         try {
             // Parse names
             String referrerFirstName = getFirstName(referrerName);
@@ -15,14 +15,14 @@ public without sharing class ReferralFormController {
             String referralLastName = getLastName(referralName);
             
             // Process Referrer
-            processReferrer(referrerEmail, referrerFirstName, referrerLastName);
+            processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl);
             
             // Process Referral
             String referralNote = 'Referred by: ' + referrerName + ' (' + referrerEmail + ')';
             String company = String.isBlank(referralCompany) ? 'Not Provided' : referralCompany;
             
             processReferral(referralEmail, referralFirstName, referralLastName, 
-                          company, referralNote, referralName);
+                          company, referralNote, referralName, pageUrl);
             
             return 'Success';
         } catch (Exception e) {
@@ -30,7 +30,7 @@ public without sharing class ReferralFormController {
         }
     }
     
-    private static void processReferrer(String email, String firstName, String lastName) {
+    private static void processReferrer(String email, String firstName, String lastName, String pageUrl) {
         // Check if referrer exists as Contact
         List<Contact> contacts = [SELECT Id FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!contacts.isEmpty()) {
@@ -54,6 +54,11 @@ public without sharing class ReferralFormController {
             RecordTypeId = EXEC_ED_RECORD_TYPE_ID
         );
         
+        // Set Page URL if provided
+        if (String.isNotBlank(pageUrl)) {
+            newLead.Page_URL__c = pageUrl;
+        }
+        
         // Set owner to System Admin
         Id sysAdminId = getSystemAdminUserId();
         if (sysAdminId != null) {
@@ -64,10 +69,10 @@ public without sharing class ReferralFormController {
     }
     
     private static void processReferral(String email, String firstName, String lastName, 
-                                        String company, String referralNote, String referralName) {
+                                        String company, String referralNote, String referralName, String pageUrl) {
         if (String.isBlank(email)) {
             // No email provided - create Lead without email
-            createReferralLead(null, firstName, lastName, company, referralNote);
+            createReferralLead(null, firstName, lastName, company, referralNote, pageUrl);
             return;
         }
         
@@ -78,6 +83,9 @@ public without sharing class ReferralFormController {
             Contact c = contacts[0];
             c.Description = referralNote;
             c.Referred__c = referralName;
+            if (String.isNotBlank(pageUrl)) {
+                c.Page_URL__c = pageUrl;
+            }
             update c;
             return;
         }
@@ -90,16 +98,19 @@ public without sharing class ReferralFormController {
             l.Description = referralNote;
             l.LeadSource = 'Referral';
             l.Alternate_Email__c = email;
+            if (String.isNotBlank(pageUrl)) {
+                l.Page_URL__c = pageUrl;
+            }
             update l;
             return;
         }
         
         // Create new Lead for referral
-        createReferralLead(email, firstName, lastName, company, referralNote);
+        createReferralLead(email, firstName, lastName, company, referralNote, pageUrl);
     }
     
     private static void createReferralLead(String email, String firstName, String lastName, 
-                                           String company, String referralNote) {
+                                           String company, String referralNote, String pageUrl) {
         Lead newLead = new Lead(
             FirstName = firstName,
             LastName = lastName,
@@ -111,6 +122,11 @@ public without sharing class ReferralFormController {
         );
         if (String.isNotBlank(email)) {
             newLead.Email = email;
+        }
+        
+        // Set Page URL if provided
+        if (String.isNotBlank(pageUrl)) {
+            newLead.Page_URL__c = pageUrl;
         }
         
         // Set owner to System Admin

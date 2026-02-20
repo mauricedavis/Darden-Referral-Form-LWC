@@ -10,6 +10,27 @@ export default class ReferralForm extends LightningElement {
     @track isLoading = false;
     @track isSubmitted = false;
     @track errorMessage = '';
+    
+    pageUrl = '';
+    
+    connectedCallback() {
+        this.capturePageUrl();
+    }
+    
+    capturePageUrl() {
+        try {
+            // Try to get the parent page URL (for iframe embeds)
+            if (document.referrer) {
+                this.pageUrl = document.referrer;
+            } else {
+                // Fallback to current page URL
+                this.pageUrl = window.location.href;
+            }
+        } catch (e) {
+            // If access is blocked due to cross-origin, use current URL
+            this.pageUrl = window.location.href;
+        }
+    }
 
     handleReferrerNameChange(event) {
         this.referrerName = event.target.value;
@@ -63,7 +84,8 @@ export default class ReferralForm extends LightningElement {
                 referrerEmail: this.referrerEmail,
                 referralName: this.referralName,
                 referralCompany: this.referralCompany,
-                referralEmail: this.referralEmail
+                referralEmail: this.referralEmail,
+                pageUrl: this.pageUrl
             });
             
             this.isSubmitted = true;
