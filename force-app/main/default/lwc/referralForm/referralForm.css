@@ -1,0 +1,71 @@
+:host {
+    display: block;
+    width: 100%;
+    background: white;
+}
+
+.referral-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+}
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-field {
+    width: 100%;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+    padding-top: 16px;
+}
+
+.submit-button {
+    min-width: 120px;
+}
+
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+}
+
+.error-message {
+    color: #c23934;
+    background: #fef1f1;
+    border: 1px solid #c23934;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 16px;
+    text-align: center;
+}
+
+.thank-you-message {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.thank-you-message h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2e844a;
+    margin: 16px 0 8px 0;
+}
+
+.thank-you-message p {
+    font-size: 16px;
+    color: #444;
+    margin: 0;
+}
+
+.thank-you-message lightning-icon {
+    --sds-c-icon-color-foreground-default: #2e844a;
+}

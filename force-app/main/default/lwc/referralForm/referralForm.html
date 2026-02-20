@@ -1,0 +1,86 @@
+<template>
+    <div class="referral-form-container">
+        <template if:false={isSubmitted}>
+            <div class="form-content">
+                <lightning-input
+                    type="text"
+                    label="Your Name"
+                    value={referrerName}
+                    onchange={handleReferrerNameChange}
+                    required
+                    field-level-help="Enter your full name"
+                    class="form-field">
+                </lightning-input>
+                
+                <lightning-input
+                    type="email"
+                    label="Your Email"
+                    value={referrerEmail}
+                    onchange={handleReferrerEmailChange}
+                    required
+                    field-level-help="Enter your email address"
+                    class="form-field">
+                </lightning-input>
+                
+                <lightning-input
+                    type="text"
+                    label="Referral Name"
+                    value={referralName}
+                    onchange={handleReferralNameChange}
+                    required
+                    field-level-help="Enter the name of the person you're referring"
+                    class="form-field">
+                </lightning-input>
+                
+                <lightning-input
+                    type="text"
+                    label="Referral Company"
+                    value={referralCompany}
+                    onchange={handleReferralCompanyChange}
+                    field-level-help="Enter the referral's company name"
+                    class="form-field">
+                </lightning-input>
+                
+                <lightning-input
+                    type="email"
+                    label="Email"
+                    value={referralEmail}
+                    onchange={handleReferralEmailChange}
+                    required
+                    field-level-help="Enter the referral's email address"
+                    class="form-field">
+                </lightning-input>
+                
+                <div class="button-container">
+                    <lightning-button
+                        variant="brand"
+                        label="Submit"
+                        onclick={handleSubmit}
+                        disabled={isLoading}
+                        class="submit-button">
+                    </lightning-button>
+                </div>
+                
+                <template if:true={isLoading}>
+                    <div class="loading-spinner">
+                        <lightning-spinner alternative-text="Submitting..." size="small"></lightning-spinner>
+                    </div>
+                </template>
+                
+                <template if:true={errorMessage}>
+                    <div class="error-message">
+                        {errorMessage}
+                    </div>
+                </template>
+            </div>
+        </template>
+        
+        <template if:true={isSubmitted}>
+            <div class="thank-you-message">
+                <lightning-icon icon-name="utility:check" size="large" variant="success"></lightning-icon>
+                <h2>Thank You!</h2>
+                <p>Thank you for your referral! We appreciate you thinking of us.</p>
+            </div>
+        </template>
+    </div>
+</template>

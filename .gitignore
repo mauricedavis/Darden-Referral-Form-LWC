@@ -1,0 +1,43 @@
+# Salesforce DX
+.sf/
+.sfdx/
+.localdevserver/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build outputs
+deploy/
+destructive/
+
+# Test results
+test-results/
+
+# Temporary files
+*.tmp
+*.bak
+
+# Unrelated project files (other Darden work)
+Images/
+temp_flow_check/
+*.xlsx
+*.docx
+*.pptx
+*.png
+*.jfif
+AutocreatedConfigSelfReg1619013124122.txt
+SelfRegistrationController.txt
+Lead_Conversion_Fix_Jira_Summary_Darden EELL-276.md
