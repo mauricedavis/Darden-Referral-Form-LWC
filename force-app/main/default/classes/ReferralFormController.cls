@@ -16,18 +16,17 @@ public without sharing class ReferralFormController {
             String referralFirstName = getFirstName(referralName);
             String referralLastName = getLastName(referralName);
             
-            // Build UTM tracking string
-            String utmData = buildUtmString(utmSource, utmMedium, utmCampaign, utmTerm, utmContent);
-            
             // Process Referrer
-            processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl, utmData);
+            processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl,
+                          utmSource, utmMedium, utmCampaign, utmContent);
             
             // Process Referral
             String referralNote = 'Referred by: ' + referrerName + ' (' + referrerEmail + ')';
             String company = String.isBlank(referralCompany) ? 'Not Provided' : referralCompany;
             
             processReferral(referralEmail, referralFirstName, referralLastName, 
-                          company, referralNote, referralName, pageUrl, utmData);
+                          company, referralNote, referralName, pageUrl,
+                          utmSource, utmMedium, utmCampaign, utmContent);
             
             return 'Success';
         } catch (Exception e) {
@@ -35,34 +34,8 @@ public without sharing class ReferralFormController {
         }
     }
     
-    private static String buildUtmString(String utmSource, String utmMedium, String utmCampaign,
-                                         String utmTerm, String utmContent) {
-        List<String> utmParts = new List<String>();
-        
-        if (String.isNotBlank(utmSource)) {
-            utmParts.add('Source: ' + utmSource);
-        }
-        if (String.isNotBlank(utmMedium)) {
-            utmParts.add('Medium: ' + utmMedium);
-        }
-        if (String.isNotBlank(utmCampaign)) {
-            utmParts.add('Campaign: ' + utmCampaign);
-        }
-        if (String.isNotBlank(utmTerm)) {
-            utmParts.add('Term: ' + utmTerm);
-        }
-        if (String.isNotBlank(utmContent)) {
-            utmParts.add('Content: ' + utmContent);
-        }
-        
-        if (utmParts.isEmpty()) {
-            return '';
-        }
-        
-        return 'UTM Parameters: ' + String.join(utmParts, ' | ');
-    }
-    
-    private static void processReferrer(String email, String firstName, String lastName, String pageUrl, String utmData) {
+    private static void processReferrer(String email, String firstName, String lastName, String pageUrl,
+                                        String utmSource, String utmMedium, String utmCampaign, String utmContent) {
         // Check if referrer exists as Contact
         List<Contact> contacts = [SELECT Id FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!contacts.isEmpty()) {
@@ -91,10 +64,8 @@ public without sharing class ReferralFormController {
             newLead.Page_URL__c = pageUrl;
         }
         
-        // Set UTM data in Description if provided
-        if (String.isNotBlank(utmData)) {
-            newLead.Description = utmData;
-        }
+        // Set UTM fields
+        setUtmFieldsOnLead(newLead, utmSource, utmMedium, utmCampaign, utmContent);
         
         // Set owner to System Admin
         Id sysAdminId = getSystemAdminUserId();
@@ -106,10 +77,12 @@ public without sharing class ReferralFormController {
     }
     
     private static void processReferral(String email, String firstName, String lastName, 
-                                        String company, String referralNote, String referralName, String pageUrl, String utmData) {
+                                        String company, String referralNote, String referralName, String pageUrl,
+                                        String utmSource, String utmMedium, String utmCampaign, String utmContent) {
         if (String.isBlank(email)) {
             // No email provided - create Lead without email
-            createReferralLead(null, firstName, lastName, company, referralNote, pageUrl, utmData);
+            createReferralLead(null, firstName, lastName, company, referralNote, pageUrl,
+                             utmSource, utmMedium, utmCampaign, utmContent);
             return;
         }
         
@@ -118,11 +91,13 @@ public without sharing class ReferralFormController {
         if (!contacts.isEmpty()) {
             // Update existing Contact - match Flow behavior
             Contact c = contacts[0];
-            c.Description = buildDescriptionWithUtm(referralNote, utmData);
+            c.Description = referralNote;
             c.Referred__c = referralName;
             if (String.isNotBlank(pageUrl)) {
                 c.Page_URL__c = pageUrl;
             }
+            // Set UTM fields on Contact
+            setUtmFieldsOnContact(c, utmSource, utmMedium, utmCampaign, utmContent);
             update c;
             return;
         }
@@ -132,36 +107,33 @@ public without sharing class ReferralFormController {
         if (!leads.isEmpty()) {
             // Update existing Lead - match Flow behavior
             Lead l = leads[0];
-            l.Description = buildDescriptionWithUtm(referralNote, utmData);
+            l.Description = referralNote;
             l.LeadSource = 'Referral';
             l.Alternate_Email__c = email;
             if (String.isNotBlank(pageUrl)) {
                 l.Page_URL__c = pageUrl;
             }
+            // Set UTM fields on Lead
+            setUtmFieldsOnLead(l, utmSource, utmMedium, utmCampaign, utmContent);
             update l;
             return;
         }
         
         // Create new Lead for referral
-        createReferralLead(email, firstName, lastName, company, referralNote, pageUrl, utmData);
-    }
-    
-    private static String buildDescriptionWithUtm(String referralNote, String utmData) {
-        if (String.isBlank(utmData)) {
-            return referralNote;
-        }
-        return referralNote + '\n\n' + utmData;
+        createReferralLead(email, firstName, lastName, company, referralNote, pageUrl,
+                         utmSource, utmMedium, utmCampaign, utmContent);
     }
     
     private static void createReferralLead(String email, String firstName, String lastName, 
-                                           String company, String referralNote, String pageUrl, String utmData) {
+                                           String company, String referralNote, String pageUrl,
+                                           String utmSource, String utmMedium, String utmCampaign, String utmContent) {
         Lead newLead = new Lead(
             FirstName = firstName,
             LastName = lastName,
             Company = company,
             LeadSource = 'Referral',
             Status = 'Open - Not Contacted',
-            Description = buildDescriptionWithUtm(referralNote, utmData),
+            Description = referralNote,
             RecordTypeId = EXEC_ED_RECORD_TYPE_ID
         );
         if (String.isNotBlank(email)) {
@@ -173,6 +145,9 @@ public without sharing class ReferralFormController {
             newLead.Page_URL__c = pageUrl;
         }
         
+        // Set UTM fields
+        setUtmFieldsOnLead(newLead, utmSource, utmMedium, utmCampaign, utmContent);
+        
         // Set owner to System Admin
         Id sysAdminId = getSystemAdminUserId();
         if (sysAdminId != null) {
@@ -180,6 +155,38 @@ public without sharing class ReferralFormController {
         }
         
         insert newLead;
+    }
+    
+    private static void setUtmFieldsOnLead(Lead l, String utmSource, String utmMedium, 
+                                           String utmCampaign, String utmContent) {
+        if (String.isNotBlank(utmSource)) {
+            l.utm_source__c = utmSource;
+        }
+        if (String.isNotBlank(utmMedium)) {
+            l.utm_medium__c = utmMedium;
+        }
+        if (String.isNotBlank(utmCampaign)) {
+            l.utm_campaign__c = utmCampaign;
+        }
+        if (String.isNotBlank(utmContent)) {
+            l.utm_content__c = utmContent;
+        }
+    }
+    
+    private static void setUtmFieldsOnContact(Contact c, String utmSource, String utmMedium, 
+                                              String utmCampaign, String utmContent) {
+        if (String.isNotBlank(utmSource)) {
+            c.utm_source__c = utmSource;
+        }
+        if (String.isNotBlank(utmMedium)) {
+            c.utm_medium__c = utmMedium;
+        }
+        if (String.isNotBlank(utmCampaign)) {
+            c.utm_campaign__c = utmCampaign;
+        }
+        if (String.isNotBlank(utmContent)) {
+            c.utm_content__c = utmContent;
+        }
     }
     
     private static String getFirstName(String fullName) {

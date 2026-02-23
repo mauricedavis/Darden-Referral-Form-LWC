@@ -14,30 +14,36 @@ private class ReferralFormControllerTest {
             'Test Company',
             'jane.referral@test.com',
             TEST_PAGE_URL,
-            'linkedin', 'social', 'tep-referral', null, null
+            'linkedin', 'social', 'tep-referral', null, 'banner-ad'
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify referrer lead was created with Page URL and UTM data
-        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email, Page_URL__c, Description FROM Lead WHERE Email = 'john.referrer@test.com'];
+        // Verify referrer lead was created with Page URL and UTM fields
+        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email, Page_URL__c, 
+                                    utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                                    FROM Lead WHERE Email = 'john.referrer@test.com'];
         System.assertEquals(1, referrerLeads.size(), 'Referrer lead should be created');
         System.assertEquals('John', referrerLeads[0].FirstName);
         System.assertEquals('Referrer', referrerLeads[0].LastName);
         System.assertEquals(TEST_PAGE_URL, referrerLeads[0].Page_URL__c, 'Page URL should be set');
-        System.assert(referrerLeads[0].Description.contains('UTM Parameters'), 'Description should contain UTM data');
-        System.assert(referrerLeads[0].Description.contains('linkedin'), 'Description should contain utm_source');
+        System.assertEquals('linkedin', referrerLeads[0].utm_source__c, 'UTM Source should be set');
+        System.assertEquals('social', referrerLeads[0].utm_medium__c, 'UTM Medium should be set');
+        System.assertEquals('tep-referral', referrerLeads[0].utm_campaign__c, 'UTM Campaign should be set');
+        System.assertEquals('banner-ad', referrerLeads[0].utm_content__c, 'UTM Content should be set');
         
-        // Verify referral lead was created with Page URL and UTM data
-        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description, Page_URL__c FROM Lead WHERE Email = 'jane.referral@test.com'];
+        // Verify referral lead was created with Page URL and UTM fields
+        List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description, Page_URL__c,
+                                    utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                                    FROM Lead WHERE Email = 'jane.referral@test.com'];
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created');
         System.assertEquals('Jane', referralLeads[0].FirstName);
         System.assertEquals('Referral', referralLeads[0].LastName);
         System.assertEquals('Test Company', referralLeads[0].Company);
         System.assert(referralLeads[0].Description.contains('Referred by'), 'Description should contain referral note');
-        System.assert(referralLeads[0].Description.contains('UTM Parameters'), 'Description should contain UTM data');
         System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
+        System.assertEquals('linkedin', referralLeads[0].utm_source__c, 'UTM Source should be set');
     }
     
     @isTest
@@ -111,19 +117,23 @@ private class ReferralFormControllerTest {
             'Company',
             'referral.person@test.com',
             TEST_PAGE_URL,
-            'google', 'cpc', 'summer-campaign', 'executive education', null
+            'google', 'cpc', 'summer-campaign', 'executive education', 'text-link'
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify existing contact was updated with Referred__c, Page_URL__c, and UTM data
-        Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c FROM Contact WHERE Id = :existingContact.Id];
+        // Verify existing contact was updated with Referred__c, Page_URL__c, and UTM fields
+        Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c,
+                                  utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                                  FROM Contact WHERE Id = :existingContact.Id];
         System.assert(updatedContact.Description.contains('Referred by'), 'Description should contain referral note');
-        System.assert(updatedContact.Description.contains('UTM Parameters'), 'Description should contain UTM data');
-        System.assert(updatedContact.Description.contains('google'), 'Description should contain utm_source');
         System.assertEquals('Referral Person Full Name', updatedContact.Referred__c, 'Referred__c should be set to referral name');
         System.assertEquals(TEST_PAGE_URL, updatedContact.Page_URL__c, 'Page URL should be set on Contact');
+        System.assertEquals('google', updatedContact.utm_source__c, 'UTM Source should be set on Contact');
+        System.assertEquals('cpc', updatedContact.utm_medium__c, 'UTM Medium should be set on Contact');
+        System.assertEquals('summer-campaign', updatedContact.utm_campaign__c, 'UTM Campaign should be set on Contact');
+        System.assertEquals('text-link', updatedContact.utm_content__c, 'UTM Content should be set on Contact');
     }
     
     @isTest
@@ -146,18 +156,23 @@ private class ReferralFormControllerTest {
             'New Company',
             'existing.lead@test.com',
             TEST_PAGE_URL,
-            null, null, null, null, null
+            'email', 'newsletter', 'monthly-update', null, null
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify existing lead was updated with all fields including Alternate_Email__c and Page_URL__c
-        Lead updatedLead = [SELECT Id, Description, LeadSource, Alternate_Email__c, Page_URL__c FROM Lead WHERE Id = :existingLead.Id];
+        // Verify existing lead was updated with all fields including UTM
+        Lead updatedLead = [SELECT Id, Description, LeadSource, Alternate_Email__c, Page_URL__c,
+                           utm_source__c, utm_medium__c, utm_campaign__c 
+                           FROM Lead WHERE Id = :existingLead.Id];
         System.assertEquals('Referral', updatedLead.LeadSource);
         System.assert(updatedLead.Description.contains('Referred by'), 'Description should be updated');
         System.assertEquals('existing.lead@test.com', updatedLead.Alternate_Email__c, 'Alternate_Email__c should be set');
         System.assertEquals(TEST_PAGE_URL, updatedLead.Page_URL__c, 'Page URL should be set on existing Lead');
+        System.assertEquals('email', updatedLead.utm_source__c, 'UTM Source should be set');
+        System.assertEquals('newsletter', updatedLead.utm_medium__c, 'UTM Medium should be set');
+        System.assertEquals('monthly-update', updatedLead.utm_campaign__c, 'UTM Campaign should be set');
     }
     
     @isTest
@@ -224,13 +239,13 @@ private class ReferralFormControllerTest {
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify referral lead has all UTM data in description
-        List<Lead> leads = [SELECT Id, Description FROM Lead WHERE Email = 'utm.referral@test.com'];
+        // Verify referral lead has all UTM fields populated
+        List<Lead> leads = [SELECT Id, utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                           FROM Lead WHERE Email = 'utm.referral@test.com'];
         System.assertEquals(1, leads.size(), 'Lead should be created');
-        System.assert(leads[0].Description.contains('Source: linkedin'), 'Should contain utm_source');
-        System.assert(leads[0].Description.contains('Medium: social'), 'Should contain utm_medium');
-        System.assert(leads[0].Description.contains('Campaign: tep-2026'), 'Should contain utm_campaign');
-        System.assert(leads[0].Description.contains('Term: executive'), 'Should contain utm_term');
-        System.assert(leads[0].Description.contains('Content: banner-ad'), 'Should contain utm_content');
+        System.assertEquals('linkedin', leads[0].utm_source__c, 'UTM Source should be set');
+        System.assertEquals('social', leads[0].utm_medium__c, 'UTM Medium should be set');
+        System.assertEquals('tep-2026', leads[0].utm_campaign__c, 'UTM Campaign should be set');
+        System.assertEquals('banner-ad', leads[0].utm_content__c, 'UTM Content should be set');
     }
 }
