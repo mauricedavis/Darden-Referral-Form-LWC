@@ -12,32 +12,38 @@ export default class ReferralForm extends LightningElement {
     @track errorMessage = '';
     
     pageUrl = '';
+    utmSource = '';
+    utmMedium = '';
+    utmCampaign = '';
+    utmTerm = '';
+    utmContent = '';
     
     connectedCallback() {
-        this.capturePageUrl();
+        this.captureTrackingData();
     }
     
-    capturePageUrl() {
+    captureTrackingData() {
         try {
-            // Priority 1: Check for pageUrl query parameter (most reliable for iframe embeds)
             const urlParams = new URLSearchParams(window.location.search);
+            
+            // Capture UTM parameters
+            this.utmSource = urlParams.get('utm_source') || '';
+            this.utmMedium = urlParams.get('utm_medium') || '';
+            this.utmCampaign = urlParams.get('utm_campaign') || '';
+            this.utmTerm = urlParams.get('utm_term') || '';
+            this.utmContent = urlParams.get('utm_content') || '';
+            
+            // Capture page URL
             const paramUrl = urlParams.get('pageUrl') || urlParams.get('ref') || urlParams.get('source');
             
             if (paramUrl) {
                 this.pageUrl = decodeURIComponent(paramUrl);
-                return;
-            }
-            
-            // Priority 2: Try document.referrer (may be truncated by browser policies)
-            if (document.referrer) {
+            } else if (document.referrer) {
                 this.pageUrl = document.referrer;
-                return;
+            } else {
+                this.pageUrl = window.location.href;
             }
-            
-            // Priority 3: Fallback to current page URL
-            this.pageUrl = window.location.href;
         } catch (e) {
-            // If access is blocked due to cross-origin, use current URL
             this.pageUrl = window.location.href;
         }
     }
@@ -95,7 +101,12 @@ export default class ReferralForm extends LightningElement {
                 referralName: this.referralName,
                 referralCompany: this.referralCompany,
                 referralEmail: this.referralEmail,
-                pageUrl: this.pageUrl
+                pageUrl: this.pageUrl,
+                utmSource: this.utmSource,
+                utmMedium: this.utmMedium,
+                utmCampaign: this.utmCampaign,
+                utmTerm: this.utmTerm,
+                utmContent: this.utmContent
             });
             
             this.isSubmitted = true;

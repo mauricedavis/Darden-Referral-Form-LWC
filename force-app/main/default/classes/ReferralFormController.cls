@@ -6,7 +6,9 @@ public without sharing class ReferralFormController {
     @AuraEnabled
     public static String submitReferral(String referrerName, String referrerEmail, 
                                         String referralName, String referralCompany, 
-                                        String referralEmail, String pageUrl) {
+                                        String referralEmail, String pageUrl,
+                                        String utmSource, String utmMedium, String utmCampaign,
+                                        String utmTerm, String utmContent) {
         try {
             // Parse names
             String referrerFirstName = getFirstName(referrerName);
@@ -14,15 +16,18 @@ public without sharing class ReferralFormController {
             String referralFirstName = getFirstName(referralName);
             String referralLastName = getLastName(referralName);
             
+            // Build UTM tracking string
+            String utmData = buildUtmString(utmSource, utmMedium, utmCampaign, utmTerm, utmContent);
+            
             // Process Referrer
-            processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl);
+            processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl, utmData);
             
             // Process Referral
             String referralNote = 'Referred by: ' + referrerName + ' (' + referrerEmail + ')';
             String company = String.isBlank(referralCompany) ? 'Not Provided' : referralCompany;
             
             processReferral(referralEmail, referralFirstName, referralLastName, 
-                          company, referralNote, referralName, pageUrl);
+                          company, referralNote, referralName, pageUrl, utmData);
             
             return 'Success';
         } catch (Exception e) {
@@ -30,7 +35,34 @@ public without sharing class ReferralFormController {
         }
     }
     
-    private static void processReferrer(String email, String firstName, String lastName, String pageUrl) {
+    private static String buildUtmString(String utmSource, String utmMedium, String utmCampaign,
+                                         String utmTerm, String utmContent) {
+        List<String> utmParts = new List<String>();
+        
+        if (String.isNotBlank(utmSource)) {
+            utmParts.add('Source: ' + utmSource);
+        }
+        if (String.isNotBlank(utmMedium)) {
+            utmParts.add('Medium: ' + utmMedium);
+        }
+        if (String.isNotBlank(utmCampaign)) {
+            utmParts.add('Campaign: ' + utmCampaign);
+        }
+        if (String.isNotBlank(utmTerm)) {
+            utmParts.add('Term: ' + utmTerm);
+        }
+        if (String.isNotBlank(utmContent)) {
+            utmParts.add('Content: ' + utmContent);
+        }
+        
+        if (utmParts.isEmpty()) {
+            return '';
+        }
+        
+        return 'UTM Parameters: ' + String.join(utmParts, ' | ');
+    }
+    
+    private static void processReferrer(String email, String firstName, String lastName, String pageUrl, String utmData) {
         // Check if referrer exists as Contact
         List<Contact> contacts = [SELECT Id FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!contacts.isEmpty()) {
@@ -59,6 +91,11 @@ public without sharing class ReferralFormController {
             newLead.Page_URL__c = pageUrl;
         }
         
+        // Set UTM data in Description if provided
+        if (String.isNotBlank(utmData)) {
+            newLead.Description = utmData;
+        }
+        
         // Set owner to System Admin
         Id sysAdminId = getSystemAdminUserId();
         if (sysAdminId != null) {
@@ -69,10 +106,10 @@ public without sharing class ReferralFormController {
     }
     
     private static void processReferral(String email, String firstName, String lastName, 
-                                        String company, String referralNote, String referralName, String pageUrl) {
+                                        String company, String referralNote, String referralName, String pageUrl, String utmData) {
         if (String.isBlank(email)) {
             // No email provided - create Lead without email
-            createReferralLead(null, firstName, lastName, company, referralNote, pageUrl);
+            createReferralLead(null, firstName, lastName, company, referralNote, pageUrl, utmData);
             return;
         }
         
@@ -81,7 +118,7 @@ public without sharing class ReferralFormController {
         if (!contacts.isEmpty()) {
             // Update existing Contact - match Flow behavior
             Contact c = contacts[0];
-            c.Description = referralNote;
+            c.Description = buildDescriptionWithUtm(referralNote, utmData);
             c.Referred__c = referralName;
             if (String.isNotBlank(pageUrl)) {
                 c.Page_URL__c = pageUrl;
@@ -95,7 +132,7 @@ public without sharing class ReferralFormController {
         if (!leads.isEmpty()) {
             // Update existing Lead - match Flow behavior
             Lead l = leads[0];
-            l.Description = referralNote;
+            l.Description = buildDescriptionWithUtm(referralNote, utmData);
             l.LeadSource = 'Referral';
             l.Alternate_Email__c = email;
             if (String.isNotBlank(pageUrl)) {
@@ -106,18 +143,25 @@ public without sharing class ReferralFormController {
         }
         
         // Create new Lead for referral
-        createReferralLead(email, firstName, lastName, company, referralNote, pageUrl);
+        createReferralLead(email, firstName, lastName, company, referralNote, pageUrl, utmData);
+    }
+    
+    private static String buildDescriptionWithUtm(String referralNote, String utmData) {
+        if (String.isBlank(utmData)) {
+            return referralNote;
+        }
+        return referralNote + '\n\n' + utmData;
     }
     
     private static void createReferralLead(String email, String firstName, String lastName, 
-                                           String company, String referralNote, String pageUrl) {
+                                           String company, String referralNote, String pageUrl, String utmData) {
         Lead newLead = new Lead(
             FirstName = firstName,
             LastName = lastName,
             Company = company,
             LeadSource = 'Referral',
             Status = 'Open - Not Contacted',
-            Description = referralNote,
+            Description = buildDescriptionWithUtm(referralNote, utmData),
             RecordTypeId = EXEC_ED_RECORD_TYPE_ID
         );
         if (String.isNotBlank(email)) {

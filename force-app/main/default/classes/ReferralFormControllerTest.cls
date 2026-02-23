@@ -13,26 +13,30 @@ private class ReferralFormControllerTest {
             'Jane Referral',
             'Test Company',
             'jane.referral@test.com',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            'linkedin', 'social', 'tep-referral', null, null
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify referrer lead was created with Page URL
-        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email, Page_URL__c FROM Lead WHERE Email = 'john.referrer@test.com'];
+        // Verify referrer lead was created with Page URL and UTM data
+        List<Lead> referrerLeads = [SELECT Id, FirstName, LastName, Email, Page_URL__c, Description FROM Lead WHERE Email = 'john.referrer@test.com'];
         System.assertEquals(1, referrerLeads.size(), 'Referrer lead should be created');
         System.assertEquals('John', referrerLeads[0].FirstName);
         System.assertEquals('Referrer', referrerLeads[0].LastName);
         System.assertEquals(TEST_PAGE_URL, referrerLeads[0].Page_URL__c, 'Page URL should be set');
+        System.assert(referrerLeads[0].Description.contains('UTM Parameters'), 'Description should contain UTM data');
+        System.assert(referrerLeads[0].Description.contains('linkedin'), 'Description should contain utm_source');
         
-        // Verify referral lead was created with Page URL
+        // Verify referral lead was created with Page URL and UTM data
         List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description, Page_URL__c FROM Lead WHERE Email = 'jane.referral@test.com'];
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created');
         System.assertEquals('Jane', referralLeads[0].FirstName);
         System.assertEquals('Referral', referralLeads[0].LastName);
         System.assertEquals('Test Company', referralLeads[0].Company);
         System.assert(referralLeads[0].Description.contains('Referred by'), 'Description should contain referral note');
+        System.assert(referralLeads[0].Description.contains('UTM Parameters'), 'Description should contain UTM data');
         System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
     }
     
@@ -46,7 +50,8 @@ private class ReferralFormControllerTest {
             'Jane NoEmail',
             '',
             '',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            null, null, null, null, null
         );
         Test.stopTest();
         
@@ -76,7 +81,8 @@ private class ReferralFormControllerTest {
             'New Referral',
             'Company',
             'new.referral@test.com',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            null, null, null, null, null
         );
         Test.stopTest();
         
@@ -104,15 +110,18 @@ private class ReferralFormControllerTest {
             'Referral Person Full Name',
             'Company',
             'referral.person@test.com',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            'google', 'cpc', 'summer-campaign', 'executive education', null
         );
         Test.stopTest();
         
         System.assertEquals('Success', result, 'Should return Success');
         
-        // Verify existing contact was updated with Referred__c and Page_URL__c fields
+        // Verify existing contact was updated with Referred__c, Page_URL__c, and UTM data
         Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c FROM Contact WHERE Id = :existingContact.Id];
         System.assert(updatedContact.Description.contains('Referred by'), 'Description should contain referral note');
+        System.assert(updatedContact.Description.contains('UTM Parameters'), 'Description should contain UTM data');
+        System.assert(updatedContact.Description.contains('google'), 'Description should contain utm_source');
         System.assertEquals('Referral Person Full Name', updatedContact.Referred__c, 'Referred__c should be set to referral name');
         System.assertEquals(TEST_PAGE_URL, updatedContact.Page_URL__c, 'Page URL should be set on Contact');
     }
@@ -136,7 +145,8 @@ private class ReferralFormControllerTest {
             'Existing Lead',
             'New Company',
             'existing.lead@test.com',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            null, null, null, null, null
         );
         Test.stopTest();
         
@@ -160,7 +170,8 @@ private class ReferralFormControllerTest {
             'AnotherSingle',
             'Company',
             'another@test.com',
-            TEST_PAGE_URL
+            TEST_PAGE_URL,
+            null, null, null, null, null
         );
         Test.stopTest();
         
@@ -183,7 +194,8 @@ private class ReferralFormControllerTest {
             'Test Referral',
             'Test Co',
             'testreferral@test.com',
-            null
+            null,
+            null, null, null, null, null
         );
         Test.stopTest();
         
@@ -193,5 +205,32 @@ private class ReferralFormControllerTest {
         List<Lead> leads = [SELECT Id, Page_URL__c FROM Lead WHERE Email = 'testreferral@test.com'];
         System.assertEquals(1, leads.size(), 'Lead should be created');
         System.assertEquals(null, leads[0].Page_URL__c, 'Page URL should be null');
+    }
+    
+    @isTest
+    static void testSubmitReferralWithAllUtmParams() {
+        // Test with all UTM parameters
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'UTM Referrer',
+            'utm.referrer@test.com',
+            'UTM Referral',
+            'UTM Company',
+            'utm.referral@test.com',
+            TEST_PAGE_URL,
+            'linkedin', 'social', 'tep-2026', 'executive', 'banner-ad'
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success');
+        
+        // Verify referral lead has all UTM data in description
+        List<Lead> leads = [SELECT Id, Description FROM Lead WHERE Email = 'utm.referral@test.com'];
+        System.assertEquals(1, leads.size(), 'Lead should be created');
+        System.assert(leads[0].Description.contains('Source: linkedin'), 'Should contain utm_source');
+        System.assert(leads[0].Description.contains('Medium: social'), 'Should contain utm_medium');
+        System.assert(leads[0].Description.contains('Campaign: tep-2026'), 'Should contain utm_campaign');
+        System.assert(leads[0].Description.contains('Term: executive'), 'Should contain utm_term');
+        System.assert(leads[0].Description.contains('Content: banner-ad'), 'Should contain utm_content');
     }
 }
