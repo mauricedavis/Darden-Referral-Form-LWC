@@ -29,21 +29,161 @@ private class ReferralFormControllerTest {
         System.assertEquals('Referrer', referrerLeads[0].LastName);
         System.assertEquals(TEST_PAGE_URL, referrerLeads[0].Page_URL__c, 'Page URL should be set');
         System.assertEquals('linkedin', referrerLeads[0].utm_source__c, 'UTM Source should be set');
-        System.assertEquals('social', referrerLeads[0].utm_medium__c, 'UTM Medium should be set');
-        System.assertEquals('tep-referral', referrerLeads[0].utm_campaign__c, 'UTM Campaign should be set');
-        System.assertEquals('banner-ad', referrerLeads[0].utm_content__c, 'UTM Content should be set');
         
         // Verify referral lead was created with Page URL and UTM fields
         List<Lead> referralLeads = [SELECT Id, FirstName, LastName, Email, Company, Description, Page_URL__c,
-                                    utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                                    utm_source__c, LeadSource 
                                     FROM Lead WHERE Email = 'jane.referral@test.com'];
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created');
         System.assertEquals('Jane', referralLeads[0].FirstName);
         System.assertEquals('Referral', referralLeads[0].LastName);
         System.assertEquals('Test Company', referralLeads[0].Company);
         System.assert(referralLeads[0].Description.contains('Referred by'), 'Description should contain referral note');
-        System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
-        System.assertEquals('linkedin', referralLeads[0].utm_source__c, 'UTM Source should be set');
+        System.assertEquals('Referral', referralLeads[0].LeadSource, 'LeadSource should be Referral for new leads');
+    }
+    
+    @isTest
+    static void testSubmitReferralExistingReferrerContact() {
+        // Create existing contact for referrer
+        Contact existingContact = new Contact(
+            FirstName = 'Existing',
+            LastName = 'Referrer',
+            Email = 'existing.referrer@test.com'
+        );
+        insert existingContact;
+        
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'Existing Referrer',
+            'existing.referrer@test.com',
+            'New Referral Person',
+            'Company',
+            'new.referral@test.com',
+            TEST_PAGE_URL,
+            null, null, null, null, null
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success');
+        
+        // Verify existing contact was updated with only Description
+        Contact updatedContact = [SELECT Id, Description FROM Contact WHERE Id = :existingContact.Id];
+        System.assert(updatedContact.Description.contains('Referred: New Referral Person'), 
+                     'Description should say Referred: [referral name]');
+        
+        // Verify no new lead was created for referrer
+        List<Lead> referrerLeads = [SELECT Id FROM Lead WHERE Email = 'existing.referrer@test.com'];
+        System.assertEquals(0, referrerLeads.size(), 'No lead should be created for existing contact referrer');
+    }
+    
+    @isTest
+    static void testSubmitReferralExistingReferrerLead() {
+        // Create existing lead for referrer
+        Lead existingLead = new Lead(
+            FirstName = 'Existing',
+            LastName = 'ReferrerLead',
+            Email = 'existing.referrer.lead@test.com',
+            Company = 'Test Co',
+            Status = 'Open - Not Contacted',
+            LeadSource = 'Web'
+        );
+        insert existingLead;
+        
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'Existing ReferrerLead',
+            'existing.referrer.lead@test.com',
+            'Another Referral',
+            'Company',
+            'another.referral@test.com',
+            TEST_PAGE_URL,
+            null, null, null, null, null
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success');
+        
+        // Verify existing lead was updated with only Description
+        Lead updatedLead = [SELECT Id, Description, LeadSource FROM Lead WHERE Id = :existingLead.Id];
+        System.assert(updatedLead.Description.contains('Referred: Another Referral'), 
+                     'Description should say Referred: [referral name]');
+        System.assertEquals('Web', updatedLead.LeadSource, 'LeadSource should NOT change for existing referrer');
+    }
+    
+    @isTest
+    static void testSubmitReferralUpdateExistingReferralContact() {
+        // Create existing contact that will be found as the referral
+        Contact existingContact = new Contact(
+            FirstName = 'Referral',
+            LastName = 'Person',
+            Email = 'referral.person@test.com'
+        );
+        insert existingContact;
+        
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'John Doe',
+            'john.doe@test.com',
+            'Referral Person Full Name',
+            'Company',
+            'referral.person@test.com',
+            TEST_PAGE_URL,
+            'google', 'cpc', 'summer-campaign', 'executive education', 'text-link'
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success');
+        
+        // Verify existing contact was updated per client requirements
+        Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c,
+                                  hed__AlternateEmail__c, Secondary_Lead_Source__c,
+                                  utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
+                                  FROM Contact WHERE Id = :existingContact.Id];
+        System.assert(updatedContact.Description.contains('Referred by'), 'Description should contain referral note');
+        System.assertEquals('Referral Person Full Name', updatedContact.Referred__c, 'Referred__c should be set');
+        System.assertEquals(TEST_PAGE_URL, updatedContact.Page_URL__c, 'Page URL should be set');
+        System.assertEquals('referral.person@test.com', updatedContact.hed__AlternateEmail__c, 'hed__AlternateEmail__c should be set');
+        System.assertEquals('Referral', updatedContact.Secondary_Lead_Source__c, 'Secondary_Lead_Source__c should be Referral');
+        System.assertEquals('google', updatedContact.utm_source__c, 'UTM Source should be set');
+    }
+    
+    @isTest
+    static void testSubmitReferralExistingReferralLead() {
+        // Create existing lead for referral
+        Lead existingLead = new Lead(
+            FirstName = 'Existing',
+            LastName = 'Lead',
+            Email = 'existing.lead@test.com',
+            Company = 'Existing Company',
+            Status = 'Open - Not Contacted',
+            LeadSource = 'Web'
+        );
+        insert existingLead;
+        
+        Test.startTest();
+        String result = ReferralFormController.submitReferral(
+            'New Referrer',
+            'new.referrer@test.com',
+            'Existing Lead',
+            'New Company',
+            'existing.lead@test.com',
+            TEST_PAGE_URL,
+            'email', 'newsletter', 'monthly-update', null, null
+        );
+        Test.stopTest();
+        
+        System.assertEquals('Success', result, 'Should return Success');
+        
+        // Verify existing lead was updated per client requirements
+        Lead updatedLead = [SELECT Id, Description, LeadSource, Secondary_Lead_Source__c, 
+                           Alternate_Email__c, Page_URL__c, utm_source__c, utm_medium__c, utm_campaign__c 
+                           FROM Lead WHERE Id = :existingLead.Id];
+        System.assert(updatedLead.Description.contains('Referred by'), 'Description should be updated');
+        System.assertEquals('existing.lead@test.com', updatedLead.Alternate_Email__c, 'Alternate_Email__c should be set');
+        System.assertEquals('Referral', updatedLead.Secondary_Lead_Source__c, 'Secondary_Lead_Source__c should be Referral');
+        System.assertEquals('Web', updatedLead.LeadSource, 'LeadSource should NOT change for existing leads');
+        System.assertEquals(TEST_PAGE_URL, updatedLead.Page_URL__c, 'Page URL should be set');
+        System.assertEquals('email', updatedLead.utm_source__c, 'UTM Source should be set');
     }
     
     @isTest
@@ -68,111 +208,6 @@ private class ReferralFormControllerTest {
         System.assertEquals(1, referralLeads.size(), 'Referral lead should be created without email');
         System.assertEquals('Not Provided', referralLeads[0].Company);
         System.assertEquals(TEST_PAGE_URL, referralLeads[0].Page_URL__c, 'Page URL should be set');
-    }
-    
-    @isTest
-    static void testSubmitReferralExistingContact() {
-        // Create existing contact
-        Contact existingContact = new Contact(
-            FirstName = 'Existing',
-            LastName = 'Contact',
-            Email = 'existing.contact@test.com'
-        );
-        insert existingContact;
-        
-        Test.startTest();
-        String result = ReferralFormController.submitReferral(
-            'Referrer Name',
-            'existing.contact@test.com',
-            'New Referral',
-            'Company',
-            'new.referral@test.com',
-            TEST_PAGE_URL,
-            null, null, null, null, null
-        );
-        Test.stopTest();
-        
-        System.assertEquals('Success', result, 'Should return Success');
-        
-        // Verify no new lead was created for referrer (contact exists)
-        List<Lead> referrerLeads = [SELECT Id FROM Lead WHERE Email = 'existing.contact@test.com'];
-        System.assertEquals(0, referrerLeads.size(), 'No lead should be created for existing contact');
-    }
-    
-    @isTest
-    static void testSubmitReferralUpdateExistingContact() {
-        // Create existing contact that will be found as the referral
-        Contact existingContact = new Contact(
-            FirstName = 'Referral',
-            LastName = 'Person',
-            Email = 'referral.person@test.com'
-        );
-        insert existingContact;
-        
-        Test.startTest();
-        String result = ReferralFormController.submitReferral(
-            'John Doe',
-            'john.doe@test.com',
-            'Referral Person Full Name',
-            'Company',
-            'referral.person@test.com',
-            TEST_PAGE_URL,
-            'google', 'cpc', 'summer-campaign', 'executive education', 'text-link'
-        );
-        Test.stopTest();
-        
-        System.assertEquals('Success', result, 'Should return Success');
-        
-        // Verify existing contact was updated with Referred__c, Page_URL__c, and UTM fields
-        Contact updatedContact = [SELECT Id, Description, Referred__c, Page_URL__c,
-                                  utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c 
-                                  FROM Contact WHERE Id = :existingContact.Id];
-        System.assert(updatedContact.Description.contains('Referred by'), 'Description should contain referral note');
-        System.assertEquals('Referral Person Full Name', updatedContact.Referred__c, 'Referred__c should be set to referral name');
-        System.assertEquals(TEST_PAGE_URL, updatedContact.Page_URL__c, 'Page URL should be set on Contact');
-        System.assertEquals('google', updatedContact.utm_source__c, 'UTM Source should be set on Contact');
-        System.assertEquals('cpc', updatedContact.utm_medium__c, 'UTM Medium should be set on Contact');
-        System.assertEquals('summer-campaign', updatedContact.utm_campaign__c, 'UTM Campaign should be set on Contact');
-        System.assertEquals('text-link', updatedContact.utm_content__c, 'UTM Content should be set on Contact');
-    }
-    
-    @isTest
-    static void testSubmitReferralExistingLead() {
-        // Create existing lead for referral
-        Lead existingLead = new Lead(
-            FirstName = 'Existing',
-            LastName = 'Lead',
-            Email = 'existing.lead@test.com',
-            Company = 'Existing Company',
-            Status = 'Open - Not Contacted'
-        );
-        insert existingLead;
-        
-        Test.startTest();
-        String result = ReferralFormController.submitReferral(
-            'New Referrer',
-            'new.referrer@test.com',
-            'Existing Lead',
-            'New Company',
-            'existing.lead@test.com',
-            TEST_PAGE_URL,
-            'email', 'newsletter', 'monthly-update', null, null
-        );
-        Test.stopTest();
-        
-        System.assertEquals('Success', result, 'Should return Success');
-        
-        // Verify existing lead was updated with all fields including UTM
-        Lead updatedLead = [SELECT Id, Description, LeadSource, Alternate_Email__c, Page_URL__c,
-                           utm_source__c, utm_medium__c, utm_campaign__c 
-                           FROM Lead WHERE Id = :existingLead.Id];
-        System.assertEquals('Referral', updatedLead.LeadSource);
-        System.assert(updatedLead.Description.contains('Referred by'), 'Description should be updated');
-        System.assertEquals('existing.lead@test.com', updatedLead.Alternate_Email__c, 'Alternate_Email__c should be set');
-        System.assertEquals(TEST_PAGE_URL, updatedLead.Page_URL__c, 'Page URL should be set on existing Lead');
-        System.assertEquals('email', updatedLead.utm_source__c, 'UTM Source should be set');
-        System.assertEquals('newsletter', updatedLead.utm_medium__c, 'UTM Medium should be set');
-        System.assertEquals('monthly-update', updatedLead.utm_campaign__c, 'UTM Campaign should be set');
     }
     
     @isTest

@@ -16,9 +16,10 @@ public without sharing class ReferralFormController {
             String referralFirstName = getFirstName(referralName);
             String referralLastName = getLastName(referralName);
             
-            // Process Referrer
+            // Process Referrer - pass referralName for Description update on existing records
+            String referrerNote = 'Referred: ' + referralName;
             processReferrer(referrerEmail, referrerFirstName, referrerLastName, pageUrl,
-                          utmSource, utmMedium, utmCampaign, utmContent);
+                          utmSource, utmMedium, utmCampaign, utmContent, referrerNote);
             
             // Process Referral
             String referralNote = 'Referred by: ' + referrerName + ' (' + referrerEmail + ')';
@@ -35,17 +36,26 @@ public without sharing class ReferralFormController {
     }
     
     private static void processReferrer(String email, String firstName, String lastName, String pageUrl,
-                                        String utmSource, String utmMedium, String utmCampaign, String utmContent) {
+                                        String utmSource, String utmMedium, String utmCampaign, String utmContent,
+                                        String referrerNote) {
         // Check if referrer exists as Contact
-        List<Contact> contacts = [SELECT Id FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
+        List<Contact> contacts = [SELECT Id, Description FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!contacts.isEmpty()) {
-            return; // Referrer already exists as Contact
+            // Update existing Contact - only update Description field
+            Contact c = contacts[0];
+            c.Description = referrerNote;
+            update c;
+            return;
         }
         
         // Check if referrer exists as Lead
-        List<Lead> leads = [SELECT Id FROM Lead WHERE Email = :email AND IsConverted = false ORDER BY LastModifiedDate DESC LIMIT 1];
+        List<Lead> leads = [SELECT Id, Description FROM Lead WHERE Email = :email AND IsConverted = false ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!leads.isEmpty()) {
-            return; // Referrer already exists as Lead
+            // Update existing Lead - only update Description field
+            Lead l = leads[0];
+            l.Description = referrerNote;
+            update l;
+            return;
         }
         
         // Create new Lead for referrer
@@ -89,9 +99,14 @@ public without sharing class ReferralFormController {
         // Check if referral exists as Contact
         List<Contact> contacts = [SELECT Id, Description FROM Contact WHERE Email = :email ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!contacts.isEmpty()) {
-            // Update existing Contact - match Flow behavior
+            // Update existing Contact per client requirements:
+            // - hed__AlternateEmail__c with email from form
+            // - Secondary_Lead_Source__c to "Referral"
+            // - Description with "Referred by:..."
             Contact c = contacts[0];
             c.Description = referralNote;
+            c.hed__AlternateEmail__c = email;
+            c.Secondary_Lead_Source__c = 'Referral';
             c.Referred__c = referralName;
             if (String.isNotBlank(pageUrl)) {
                 c.Page_URL__c = pageUrl;
@@ -105,11 +120,14 @@ public without sharing class ReferralFormController {
         // Check if referral exists as Lead
         List<Lead> leads = [SELECT Id, Description FROM Lead WHERE Email = :email AND IsConverted = false ORDER BY LastModifiedDate DESC LIMIT 1];
         if (!leads.isEmpty()) {
-            // Update existing Lead - match Flow behavior
+            // Update existing Lead per client requirements:
+            // - Alternate_Email__c with email from form
+            // - Secondary_Lead_Source__c to "Referral" (not LeadSource)
+            // - Description with "Referred by:..."
             Lead l = leads[0];
             l.Description = referralNote;
-            l.LeadSource = 'Referral';
             l.Alternate_Email__c = email;
+            l.Secondary_Lead_Source__c = 'Referral';
             if (String.isNotBlank(pageUrl)) {
                 l.Page_URL__c = pageUrl;
             }
