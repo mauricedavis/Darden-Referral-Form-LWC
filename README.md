@@ -59,20 +59,31 @@ Created a completely custom LWC (`referralForm`) with:
 1. User submits form
    │
 2. Process Referrer
-   ├── Check if Contact exists (by email) → Skip if found
-   ├── Check if Lead exists (by email, not converted) → Skip if found
-   └── Create new Lead if not found
+   ├── Check if Contact exists (by email) → Update Description only ("Referred: [referral name]")
+   ├── Check if Lead exists (by email, not converted) → Update Description only ("Referred: [referral name]")
+   └── Create new Lead if not found (with full tracking data)
    │
 3. Process Referral
    ├── If no email provided → Create Lead without email
-   ├── If Contact exists → Update Description + Referred__c field
-   ├── If Lead exists → Update Description, LeadSource, Alternate_Email__c
-   └── If not found → Create new Lead
+   ├── If Contact exists → Update:
+   │     • Description ("Referred by: [referrer name] ([referrer email])")
+   │     • hed__AlternateEmail__c (email from form)
+   │     • Secondary_Lead_Source__c = "Referral"
+   │     • Referred__c (referral name)
+   │     • Page_URL__c and UTM fields
+   ├── If Lead exists → Update:
+   │     • Description ("Referred by: [referrer name] ([referrer email])")
+   │     • Alternate_Email__c (email from form)
+   │     • Secondary_Lead_Source__c = "Referral" (NOT LeadSource)
+   │     • Page_URL__c and UTM fields
+   └── If not found → Create new Lead (with LeadSource = "Referral")
    │
 4. Display Thank You message
 ```
 
 ### Field Mappings
+
+**For New Records:**
 
 | Form Field | Lead Field | Contact Field |
 |------------|------------|---------------|
@@ -82,10 +93,24 @@ Created a completely custom LWC (`referralForm`) with:
 | Referral Company | Company | - |
 | Referral Email | Email | - |
 | (Auto) Page URL | Page_URL__c | Page_URL__c |
-| Referral Email | Email | - |
+| (Auto) UTM Parameters | utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c | utm_source__c, utm_medium__c, utm_campaign__c, utm_content__c |
 | (Auto) | Description, LeadSource="Referral" | Description, Referred__c |
 | (Auto) | RecordTypeId (Exec Ed) | - |
 | (Auto) | Status="Open - Not Contacted" | - |
+
+**For Existing Records (Referrer):**
+- Only `Description` is updated with "Referred: [referral name]"
+
+**For Existing Records (Referral):**
+
+| Field | Lead | Contact |
+|-------|------|---------|
+| Description | Updated ("Referred by:...") | Updated ("Referred by:...") |
+| Alternate Email | Alternate_Email__c | hed__AlternateEmail__c |
+| Secondary Lead Source | Secondary_Lead_Source__c = "Referral" | Secondary_Lead_Source__c = "Referral" |
+| Page URL | Page_URL__c | Page_URL__c |
+| UTM Fields | Updated | Updated |
+| Referred Name | - | Referred__c |
 
 ## Deployment
 
@@ -182,8 +207,13 @@ sf apex run test -n ReferralFormControllerTest --target-org darden-prod --result
 3. **Custom Fields**: Requires these custom fields to exist:
    - `Contact.Referred__c` (Text)
    - `Contact.Page_URL__c` (URL or Text)
+   - `Contact.hed__AlternateEmail__c` (Email - from EDA managed package)
+   - `Contact.Secondary_Lead_Source__c` (Picklist)
+   - `Contact.utm_source__c`, `utm_medium__c`, `utm_campaign__c`, `utm_content__c` (Text)
    - `Lead.Alternate_Email__c` (Email)
    - `Lead.Page_URL__c` (URL or Text)
+   - `Lead.Secondary_Lead_Source__c` (Picklist)
+   - `Lead.utm_source__c`, `utm_medium__c`, `utm_campaign__c`, `utm_content__c` (Text)
 
 4. **System Admin User**: Requires an active user with username `sysadmin@darden.virginia.edu.salesforce` for Lead ownership assignment. If not found, Leads will be created with default owner.
 
